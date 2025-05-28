@@ -2,18 +2,19 @@ using Microsoft.OpenApi.Models;
 using Microsoft.OpenApi.Readers;
 using Microsoft.OpenApi.Writers;
 using System.Text;
+using System.Net;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1) Добавляем YARP-прокси
+// Добавляем YARP-прокси
 builder.Services.AddReverseProxy()
     .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
 
-// 2) HTTP-клиент для загрузки swagger.json с бэкендов
+// HTTP-клиент для загрузки swagger.json с бэкендов
 builder.Services.AddHttpClient("swagger_downloader")
     .AddStandardResilienceHandler(); // retry, timeout, circuit-breaker
 
-// 3) Swagger на уровне Gateway
+// Swagger на уровне Gateway
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(opts =>
 {
@@ -29,8 +30,38 @@ builder.Services.AddSwaggerGen(opts =>
 
 var app = builder.Build();
 
-// 4) Ендпоинт-агрегатор swagger.json
-app.MapGet("/swagger/v1/swagger.json", async (
+app.Logger.LogInformation("(ﾉ◕ヮ◕)ﾉ*:･ﾟ✧ API Gateway starting!");
+
+// Перехватываем ошибки, если сервисы выключены
+app.Use(async (HttpContext context, Func<Task> next) =>
+{
+    try
+    {
+        await next();
+
+        // YARP может сам выставить 502 Bad Gateway
+        if (context.Response.StatusCode == (int)HttpStatusCode.BadGateway)
+        {
+            await ReturnServiceDown(context);
+        }
+    }
+    catch (HttpRequestException)
+    {
+        // Сетевые ошибки считаем падением downstream
+        await ReturnServiceDown(context);
+    }
+});
+
+// Swagger
+app.UseSwagger();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/custom/v1/swagger.json", "Aggregated API v1");
+    c.RoutePrefix = "swagger";
+});
+
+// Ендпоинт-агрегатор swagger.json
+app.MapGet("/swagger/custom/v1/swagger.json", async (
         IConfiguration config,
         IHttpClientFactory httpFactory,
         ILoggerFactory logFactory) =>
@@ -99,19 +130,34 @@ app.MapGet("/swagger/v1/swagger.json", async (
         ms.Position = 0;
         return Results.Stream(ms, "application/json");
     })
-    .WithName("AggregateSwagger");
+    .WithName("GetAggregatedSwaggerJson")
+    .Produces<string>();
 
-// 5) Собственно Reverse Proxy
+// Reverse Proxy
 app.MapReverseProxy();
 
-app.UseSwagger();
-app.UseSwaggerUI(c =>
-{
-    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Aggregated API v1");
-    c.RoutePrefix = "swagger";
-});
-
 app.Run();
+
+// Возвращаем 503 + JSON, если сервис недоступен
+static Task ReturnServiceDown(HttpContext context)
+{
+    // Определяем, к какому сервису шёл запрос
+    var path = context.Request.Path.Value ?? "";
+    string svcName = path.StartsWith("/files", StringComparison.OrdinalIgnoreCase)
+        ? "FileStoringService"
+        : path.StartsWith("/analysis", StringComparison.OrdinalIgnoreCase)
+            ? "FileAnalysisService"
+            : "UnknownService";
+
+    // Чистим ответ и возвращаем 503 + JSON
+    context.Response.Clear();
+    context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+    context.Response.ContentType = "application/json";
+    return context.Response.WriteAsJsonAsync(new
+    {
+        error = $"{svcName} is currently unavailable."
+    });
+}
 
 public class SwaggerEndpointConfig
 {
