@@ -11,8 +11,12 @@ builder.Services.AddReverseProxy()
     .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
 
 // HTTP-клиент для загрузки swagger.json с бэкендов
-builder.Services.AddHttpClient("swagger_downloader")
-    .AddStandardResilienceHandler(); // retry, timeout, circuit-breaker
+builder.Services.AddHttpClient("swagger_downloader", client =>
+{
+    // допустим, ждём не более 5 секунд:
+    client.Timeout = TimeSpan.FromSeconds(5);
+});
+
 
 // Swagger на уровне Gateway
 builder.Services.AddEndpointsApiExplorer();
@@ -87,19 +91,36 @@ app.MapGet("/swagger/custom/v1/swagger.json", async (
         {
             try
             {
-                var resp = await client.GetStreamAsync(ep.Url);
-                var doc = reader.Read(resp, out var diag);
-                // префикс схем, чтобы не было коллизий
-                var prefix = ep.Key + "_";
-                foreach (var (name, schema)
-                         in doc.Components?.Schemas
-                            ?? new Dictionary<string, OpenApiSchema>())
-                    combined.Components.Schemas[prefix + name] = schema;
+                // 1) Делаем простой GET с таймаутом HttpClient
+                var response = await client.GetAsync(ep.Url);
+                if (!response.IsSuccessStatusCode)
+                {
+                    logger.LogWarning("Сервис {Url} вернул {StatusCode}, пропускаем", ep.Url, response.StatusCode);
+                    continue;
+                }
 
-                // пути: заменяем ServicePathPrefixToReplace -> GatewayPathPrefix
+                // 2) Читаем и парсим
+                await using var stream = await response.Content.ReadAsStreamAsync();
+                var doc = reader.Read(stream, out var diag);
+                if (diag.Errors.Any())
+                {
+                    logger.LogWarning("Парсинг {Url} дал ошибки: {Errors}",
+                        ep.Url, string.Join("; ", diag.Errors.Select(e => e.Message)));
+                    continue;
+                }
+
+                // 3) Мёржим схемы
+                var prefix = ep.Key + "_";
+                foreach (var (name, schema) in doc.Components?.Schemas
+                                               ?? new Dictionary<string, OpenApiSchema>())
+                {
+                    combined.Components.Schemas[prefix + name] = schema;
+                }
+
+                // 4) Мёржим пути
                 foreach (var (path, item) in doc.Paths)
                 {
-                    var newPath = path.StartsWith(ep.ServicePathPrefixToReplace)
+                    var newPath = path.StartsWith(ep.ServicePathPrefixToReplace, StringComparison.OrdinalIgnoreCase)
                         ? ep.GatewayPathPrefix + path[ep.ServicePathPrefixToReplace.Length..]
                         : ep.GatewayPathPrefix + path;
                     combined.Paths[newPath] = item;
@@ -107,31 +128,27 @@ app.MapGet("/swagger/custom/v1/swagger.json", async (
             }
             catch (Exception ex)
             {
-                logger.LogWarning(ex, "Can't fetch Swagger from {Url}", ep.Url);
+                // Ловим любой TimeoutException, HttpRequestException, парсинг и т.д.
+                logger.LogWarning(ex, "Не удалось получить или спарсить Swagger от {Url}", ep.Url);
+                // ПЕРЕХОДИМ К СЛЕДУЮЩЕМУ endpoint’у
+                continue;
             }
         }
 
-        // Серриализация в JSON
+        // Всегда отдаем документ — пусть даже пустой
         await using var ms = new MemoryStream();
-
         using var sw = new StreamWriter(ms, new UTF8Encoding(false));
-
-        // Создаём писатель
         var writer = new OpenApiJsonWriter(sw);
-
-        // Записываем наш документ
         combined.SerializeAsV3(writer);
-        writer.Flush();
-
-        // Обязательно сбрасываем буфер StreamWriter
         sw.Flush();
-
-        // Сбрасываем позицию MemoryStream и возвращаем его как результат
         ms.Position = 0;
-        return Results.Stream(ms, "application/json");
+
+        string json = await new StreamReader(ms).ReadToEndAsync();
+        return Results.Content(json, "application/json; charset=utf-8");
     })
     .WithName("GetAggregatedSwaggerJson")
     .Produces<string>();
+
 
 // Reverse Proxy
 app.MapReverseProxy();
