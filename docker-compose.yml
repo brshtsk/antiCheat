@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  filestoringservice:
+    build:
+      context: ./FileStoringService
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__AppDatabase=Host=db_filestoring;Port=5432;Database=file_storing_db;Username=postgres_user;Password=postgres_password
+      - FileStorage__BasePath=/app/storage 
+    volumes:
+      - filestoring_files_data:/app/storage 
+    depends_on:
+      - db_filestoring
+    restart: unless-stopped 
+
+  db_filestoring:
+    image: postgres:15-alpine 
+    environment:
+      POSTGRES_USER: postgres_user
+      POSTGRES_PASSWORD: postgres_password
+      POSTGRES_DB: file_storing_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - filestoring_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  filestoring_data:
+  filestoring_files_data:
