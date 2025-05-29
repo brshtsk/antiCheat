@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FileStoringService.Controllers;
 
-[Route("api/files")]
+[Route("files")]
 [ApiController]
 public class FilesController : ControllerBase
 {
