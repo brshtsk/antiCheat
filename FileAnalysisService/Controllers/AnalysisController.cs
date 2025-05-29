@@ -152,7 +152,7 @@ public class AnalysisController : ControllerBase
         return Ok(MapToDto(result));
     }
 
-    [HttpGet("{analysisId:guid}")]
+    [HttpGet("byAnalysisId/{analysisId:guid}")]
     [ProducesResponseType(typeof(AnalysisResultDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

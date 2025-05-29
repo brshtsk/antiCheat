@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("FileAnalysisService")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+917633040b997e2a1f7f10ee9624742afae65f4b")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+0aa327d24d63195290f716ed2d1b8e91cdce8467")]
 [assembly: System.Reflection.AssemblyProductAttribute("FileAnalysisService")]
 [assembly: System.Reflection.AssemblyTitleAttribute("FileAnalysisService")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
