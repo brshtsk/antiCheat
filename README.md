@@ -37,7 +37,7 @@ docker-compose up --build
 ```text
 http://localhost:8888/swagger/index.html
 ```
-![img_2.png](img_2.png)
+![img_2.png](img/Снимок экрана 2025-05-30 001146.png)
 
 ### Загрузка файла
 
@@ -179,7 +179,7 @@ GET /analysis/wordcloud/file/{fileId}
 - `fileId` — идентификатор файла.
 
 **Ответ**
-- Изображение облака слов в формате PNG. Например: ![img.png](img.png)
+- Изображение облака слов в формате PNG. Например: ![img.png](img/a38b3d96-3e81-4daa-9062-55b0a524988a.png)
 
 **Принцип работы**
 
@@ -188,4 +188,4 @@ GET /analysis/wordcloud/file/{fileId}
 ## Стабильность работы
 
 Если какой-либо из сервисов не отвечает, ApiGateway все еще может общаться с другим сервисом. Например, я выключил AnalysisService, и ApiGateway продолжает работать с FileStoringService:
-![img_1.png](img_1.png)
+![img_1.png](img/Снимок экрана 2025-05-30 000845.png)
