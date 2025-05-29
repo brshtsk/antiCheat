@@ -81,6 +81,8 @@ app.MapGet("/swagger/custom/v1/swagger.json", async (
                 Schemas = new Dictionary<string, OpenApiSchema>()
             }
         };
+        
+        combined.Servers.Clear();
 
         var endpoints = config.GetSection("SwaggerEndpoints")
             .Get<List<SwaggerEndpointConfig>>()!;
@@ -108,16 +110,23 @@ app.MapGet("/swagger/custom/v1/swagger.json", async (
                         ep.Url, string.Join("; ", diag.Errors.Select(e => e.Message)));
                     continue;
                 }
+                
+                // 3) Добавляем серверы
+                foreach (var server in doc.Servers)
+                    combined.Servers.Add(new OpenApiServer {
+                        Url = ep.GatewayPathPrefix == "/"
+                            ? server.Url
+                            : server.Url.TrimEnd('/') + ep.GatewayPathPrefix
+                    });
 
-                // 3) Мёржим схемы
-                var prefix = ep.Key + "_";
+                // 4) Мёржим схемы
                 foreach (var (name, schema) in doc.Components?.Schemas
                                                ?? new Dictionary<string, OpenApiSchema>())
                 {
-                    combined.Components.Schemas[prefix + name] = schema;
+                    combined.Components.Schemas[name] = schema;
                 }
 
-                // 4) Мёржим пути
+                // 5) Мёржим пути
                 foreach (var (path, item) in doc.Paths)
                 {
                     var newPath = path.StartsWith(ep.ServicePathPrefixToReplace, StringComparison.OrdinalIgnoreCase)
