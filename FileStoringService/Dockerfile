@@ -27,4 +27,10 @@ RUN dotnet publish "./FileStoringService.csproj" -c $BUILD_CONFIGURATION -o /app
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
+
+# Новое: подготовка папки для хранилища
+USER root
+RUN mkdir -p /app/storage && chown app:app /app/storage
+USER app
+
 ENTRYPOINT ["dotnet", "FileStoringService.dll"]

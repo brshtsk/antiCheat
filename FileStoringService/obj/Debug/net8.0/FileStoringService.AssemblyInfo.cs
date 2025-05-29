@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("FileStoringService")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+8942926d066aab4c69076393af908be816ed5a3f")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+ab7a3a9a2f48b8bc20ef0592db74fcc3eea2ecf8")]
 [assembly: System.Reflection.AssemblyProductAttribute("FileStoringService")]
 [assembly: System.Reflection.AssemblyTitleAttribute("FileStoringService")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
