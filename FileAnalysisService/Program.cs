@@ -1,4 +1,5 @@
 using System;
+using FileAnalysisService.Clients.FileStoring;
 using FileAnalysisService.Clients.WordCloud;
 using FileAnalysisService.Data;
 using FileAnalysisService.Services;
@@ -8,39 +9,56 @@ using FileAnalysisService.Services.PlagiatDetector;
 using FileAnalysisService.Services.StatisticsCounter;
 using FileAnalysisService.Services.WordCloud;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Подключаем DbContext с PostgreSQL
-var connectionString = builder.Configuration.GetConnectionString("AppDatabase");
-_ = connectionString ?? throw new InvalidOperationException(
-    "Connection string 'AppDatabase' not found.");
+// 1. Подключаем DbContext с PostgreSQL
+var connectionString = builder.Configuration.GetConnectionString("AppDatabase")
+    ?? throw new InvalidOperationException("Connection string 'AppDatabase' not found.");
 builder.Services.AddDbContext<FileAnalysisDbContext>(options =>
     options.UseNpgsql(connectionString));
 
-// Настройки локального хранения файлов для анализа
+// 2. Настройки локального хранения файлов для анализа
 builder.Services.Configure<FileStorageSettings>(
     builder.Configuration.GetSection("FileStorageForAnalysis"));
 builder.Services.AddScoped<IFileStorageProvider, LocalFileStorageProvider>();
 
-// Клиент для генерации облака слов (если используется внешнее API)
+// 3. HTTP-клиент для FileStoringService
+builder.Services.AddHttpClient<IFileStoringServiceClient, FileStoringServiceClient>(client =>
+{
+    var fileStoringUrl = builder.Configuration["ServiceUrls:FileStoringService"];
+    if (string.IsNullOrEmpty(fileStoringUrl))
+        throw new InvalidOperationException("ServiceUrls:FileStoringService is not configured.");
+    if (!fileStoringUrl.EndsWith("/"))
+        fileStoringUrl += "/";
+    client.BaseAddress = new Uri(fileStoringUrl);
+});
+
+// 4. HTTP-клиент для генерации облака слов (если используется внешний API)
 builder.Services.AddHttpClient<IWordCloudClient, WordCloudClient>(client =>
 {
     var baseUrl = builder.Configuration["WordCloudApi:BaseUrl"];
     if (string.IsNullOrEmpty(baseUrl))
-        throw new InvalidOperationException("WordCloudApi:BaseUrl не настроен.");
-    if (!baseUrl.EndsWith("/")) baseUrl += "/";
+        throw new InvalidOperationException("WordCloudApi:BaseUrl is not configured.");
+    if (!baseUrl.EndsWith("/"))
+        baseUrl += "/";
     client.BaseAddress = new Uri(baseUrl);
 });
 
-// Регистрация сервисов анализа
+// 5. Регистрация сервисов анализа
 builder.Services.AddScoped<IStatisticsCounter, StatisticsCounter>();
 builder.Services.AddScoped<IPlagiatDetector, PlagiatDetector>();
 builder.Services.AddScoped<IWordCloudService, WordCloudService>();
 
-// Оркестратор: собирает вместе все этапы анализа
+// 6. Оркестратор: собирает вместе все этапы анализа
 builder.Services.AddScoped<IFileAnalysisOrchestrator, FileAnalysisOrchestrator>();
 
+// 7. Контроллеры, Swagger, OpenAPI
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
@@ -59,26 +77,23 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI(c =>
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "FileAnalysisService API V1"));
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "FileAnalysisService API v1"));
 
-    using (var scope = app.Services.CreateScope())
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<FileAnalysisDbContext>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    try
     {
-        var db = scope.ServiceProvider.GetRequiredService<FileAnalysisDbContext>();
-        try
-        {
-            db.Database.Migrate();
-            var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-            logger.LogInformation("Применены миграции к FileAnalysisDB.");
-        }
-        catch (Exception ex)
-        {
-            var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-            logger.LogError(ex, "Ошибка при миграции FileAnalysisDB.");
-        }
+        db.Database.Migrate();
+        logger.LogInformation("Applied migrations to FileAnalysisDB successfully.");
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "An error occurred while migrating FileAnalysisDB.");
     }
 }
 
-// app.UseHttpsRedirection(); // включить при необходимости
+// app.UseHttpsRedirection(); // ToDo: юзать, если нужен HTTPS
 app.UseAuthorization();
 app.MapControllers();
 app.Run();
