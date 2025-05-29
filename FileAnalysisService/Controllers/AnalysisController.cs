@@ -274,14 +274,14 @@ public class AnalysisController : ControllerBase
             FileId = result.FileId,
 
             // Мапим хэш
-            FileContentHash = result.FileHash,
+            FileHash = result.FileHash,
 
             ParagraphCount = result.ParagraphCount,
             WordCount = result.WordCount,
-            CharCount = result.CharCount,
-            PlagiarismScores = result.PlagiatData,
-            WordCloudImageLocation = result.WordCloudImagePath,
-            Status = result.Status.ToString(),
+            CharacterCount = result.CharCount,
+            PlagiatData = result.PlagiatData,
+            WordCloudImagePath = result.WordCloudImagePath,
+            AnalysisStatus = result.Status.ToString(),
             CompletedAt = result.CompletedAt,
             ErrorMessage = result.ErrorMessage
         };

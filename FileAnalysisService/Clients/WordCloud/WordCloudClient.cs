@@ -60,7 +60,7 @@ namespace FileAnalysisService.Clients.WordCloud
                     _httpClient.BaseAddress, requestBody.format, requestBody.width, requestBody.height);
 
                 HttpResponseMessage response = await _httpClient
-                    .PostAsJsonAsync("wordcloud/generate", requestBody, _jsonOptions);
+                    .PostAsJsonAsync("wordcloud", requestBody, _jsonOptions);
 
                 if (response.IsSuccessStatusCode)
                 {

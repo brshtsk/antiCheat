@@ -13,6 +13,7 @@ public class ImageSpecs
     public double FontScale { get; set; } = 1.0;
     public bool RemoveStopwords { get; set; } = true;
     public bool UseWordList { get; set; } = false;
+    public string Scale { get; set; } = "linear";
 }
 
 public interface IWordCloudClient

@@ -47,7 +47,8 @@ builder.Services.AddHttpClient<IWordCloudClient, WordCloudClient>(client =>
         throw new InvalidOperationException("WordCloudApi:BaseUrl is not configured.");
     if (!baseUrl.EndsWith("/"))
         baseUrl += "/";
-    client.BaseAddress = new Uri(baseUrl);
+    client.BaseAddress = new Uri(builder.Configuration["WordCloudApi:BaseUrl"]!);
+
 });
 
 // 5. Регистрация сервисов анализа
