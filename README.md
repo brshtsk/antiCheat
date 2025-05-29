@@ -37,7 +37,7 @@ docker-compose up --build
 ```text
 http://localhost:8888/swagger/index.html
 ```
-![img.png](img/Снимок экрана 2025-05-30 001146.png)
+![img.png](img/full-api.png)
 
 ### Загрузка файла
 
@@ -188,4 +188,4 @@ GET /analysis/wordcloud/file/{fileId}
 ## Стабильность работы
 
 Если какой-либо из сервисов не отвечает, ApiGateway все еще может общаться с другим сервисом. Например, я выключил AnalysisService, и ApiGateway продолжает работать с FileStoringService:
-![img.png](img/Снимок экрана 2025-05-30 000845.png)
+![img.png](img/half-api.png)
