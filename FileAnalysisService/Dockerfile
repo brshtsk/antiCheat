@@ -26,4 +26,10 @@ RUN dotnet publish "./FileAnalysisService.csproj" -c $BUILD_CONFIGURATION -o /ap
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
+
+# Новое: подготовка папки для хранилища
+USER root
+RUN mkdir -p /app/analysis_storage && chown app:app /app/analysis_storage
+USER app
+
 ENTRYPOINT ["dotnet", "FileAnalysisService.dll"]

@@ -11,15 +11,15 @@ services:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:8080
       - ConnectionStrings__AppDatabase=Host=db_filestoring;Port=5432;Database=file_storing_db;Username=postgres_user;Password=postgres_password
-      - FileStorage__BasePath=/app/storage 
+      - FileStorage__BasePath=/app/storage
     volumes:
-      - filestoring_files_data:/app/storage 
+      - filestoring_files_data:/app/storage
     depends_on:
       - db_filestoring
-    restart: unless-stopped 
-
+    restart: unless-stopped
+  
   db_filestoring:
-    image: postgres:15-alpine 
+    image: postgres:15-alpine
     environment:
       POSTGRES_USER: postgres_user
       POSTGRES_PASSWORD: postgres_password
