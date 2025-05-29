@@ -20,7 +20,7 @@ public class FileStoringServiceClient : IFileStoringServiceClient
     {
         _logger.LogInformation("Requesting file data for FileId: {FileId} from FileStoringService", fileId);
 
-        var metadataUrl = $"api/files/{fileId}/metadata";
+        var metadataUrl = $"files/{fileId}/metadata";
 
         HttpResponseMessage metadataResponse;
         try
@@ -50,7 +50,7 @@ public class FileStoringServiceClient : IFileStoringServiceClient
             return null;
         }
 
-        var downloadUrl = $"api/files/{fileId}/download";
+        var downloadUrl = $"files/{fileId}/download";
 
         HttpResponseMessage fileResponse;
         try

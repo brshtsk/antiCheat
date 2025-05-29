@@ -11,6 +11,7 @@ using FileAnalysisService.Services.Orchestrator;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using FileAnalysisService.Clients.FileStoring;
 
 namespace FileAnalysisService.Controllers;
 
@@ -18,17 +19,20 @@ namespace FileAnalysisService.Controllers;
 [ApiController]
 public class AnalysisController : ControllerBase
 {
+    private readonly IFileStoringServiceClient _storingClient;
     private readonly IFileAnalysisOrchestrator _analysisOrchestrator;
     private readonly FileAnalysisDbContext _db;
     private readonly IFileStorageProvider _storageProvider;
     private readonly ILogger<AnalysisController> _logger;
 
     public AnalysisController(
+        IFileStoringServiceClient storingClient,
         IFileAnalysisOrchestrator analysisOrchestrator,
         FileAnalysisDbContext db,
         IFileStorageProvider storageProvider,
         ILogger<AnalysisController> logger)
     {
+        _storingClient = storingClient;
         _analysisOrchestrator = analysisOrchestrator;
         _db = db;
         _storageProvider = storageProvider;
@@ -52,23 +56,33 @@ public class AnalysisController : ControllerBase
 
         _logger.LogInformation("Starting analysis request for FileId={FileId}", fileId);
 
-        // 1. Получаем поток файла из FileStorageService
-        Stream fileStream;
+        // 1. Получаем файл «на лету» у FileStoringService
+        FileData? fileData;
         try
         {
-            fileStream = await _storageProvider.GetFileAsync(fileId.ToString());
+            fileData = await _storingClient.GetFileDataAsync(fileId);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to retrieve file {FileId} from storage", fileId);
+            _logger.LogError(ex, "Failed to fetch file {FileId} from FileStoringService", fileId);
             return StatusCode(500, "Unable to fetch file for analysis.");
         }
+
+        if (fileData == null)
+        {
+            _logger.LogWarning("File {FileId} not found in FileStoringService", fileId);
+            return NotFound("Source file not found.");
+        }
+
+        // Используем напрямую поток из HTTP-ответа
+        using var fileStream = fileData.Content;
+
 
         // 2. Вычисляем SHA-256 хэш содержимого
         string hash;
         try
         {
-            fileStream.Position = 0;
+            // fileStream.Position = 0;
             using var sha256 = SHA256.Create();
             var contentBytes = await ReadAllBytesAsync(fileStream);
             hash = Convert.ToHexString(sha256.ComputeHash(contentBytes));

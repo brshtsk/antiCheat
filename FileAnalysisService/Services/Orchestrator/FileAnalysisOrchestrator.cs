@@ -37,16 +37,19 @@ public class FileAnalysisOrchestrator : IFileAnalysisOrchestrator
     {
         _logger.LogInformation("Starting analysis for FileId: {FileId}, Hash: {FileHash}", fileId, fileHash);
 
+        // Попробуем найти уже завершённый анализ
         var existingResult = await _dbContext.AnalysisResults
             .AsNoTracking()
             .FirstOrDefaultAsync(r => r.FileId == fileId && r.Status == AnalysisStatus.Completed);
         if (existingResult != null)
         {
             _logger.LogInformation(
-                "Analysis for FileId: {FileId} already exists and is completed. Returning existing result.", fileId);
+                "Analysis for FileId: {FileId} already exists and is completed. Returning existing result.",
+                fileId);
             return existingResult;
         }
 
+        // Либо создаём новую запись, либо помечаем InProgress
         var analysisResult = await _dbContext.AnalysisResults
             .FirstOrDefaultAsync(r => r.FileId == fileId);
 
@@ -77,7 +80,8 @@ public class FileAnalysisOrchestrator : IFileAnalysisOrchestrator
 
             if (fileData == null || fileData.Content == null)
             {
-                _logger.LogError("Failed to retrieve file content for FileId: {FileId} from FileStoringService.",
+                _logger.LogError(
+                    "Failed to retrieve file content for FileId: {FileId} from FileStoringService.",
                     fileId);
                 analysisResult.Status = AnalysisStatus.Failed;
                 analysisResult.ErrorMessage = "Failed to retrieve file content from storage.";
@@ -85,48 +89,72 @@ public class FileAnalysisOrchestrator : IFileAnalysisOrchestrator
                 return analysisResult;
             }
 
-            using (var networkStream = fileData.Content)
-            using (var memoryStream = new MemoryStream())
+            // 1) Считываем весь контент в буфер
+            byte[] buffer;
+            await using (var ms = new MemoryStream())
             {
-                await networkStream.CopyToAsync(memoryStream);
-                memoryStream.Position = 0;
-                _logger.LogDebug("Calculating text statistics for FileId: {FileId}.", fileId);
-                var statistics = await _textStatisticsService.CountStatisticsAsync(memoryStream);
-                analysisResult.ParagraphCount = statistics.ParagraphCount;
-                analysisResult.WordCount = statistics.WordCount;
-                analysisResult.CharCount = statistics.CharacterCount;
-                _logger.LogInformation("Text statistics for FileId: {FileId} - P: {P}, W: {W}, C: {C}",
-                    fileId, statistics.ParagraphCount, statistics.WordCount, statistics.CharacterCount);
+                await fileData.Content.CopyToAsync(ms);
+                buffer = ms.ToArray();
+            }
 
-                memoryStream.Position = 0;
+            // 2) Статистика текста
+            using (var statStream = new MemoryStream(buffer))
+            {
+                _logger.LogDebug("Calculating text statistics for FileId: {FileId}.", fileId);
+                var stats = await _textStatisticsService.CountStatisticsAsync(statStream);
+                analysisResult.ParagraphCount = stats.ParagraphCount;
+                analysisResult.WordCount = stats.WordCount;
+                analysisResult.CharCount = stats.CharacterCount;
+                _logger.LogInformation(
+                    "Text statistics for FileId: {FileId} - P: {P}, W: {W}, C: {C}",
+                    fileId,
+                    stats.ParagraphCount,
+                    stats.WordCount,
+                    stats.CharacterCount);
+            }
+
+            // 3) Проверка плагиата
+            using (var plagStream = new MemoryStream(buffer))
+            {
                 _logger.LogDebug("Detecting plagiarism for FileId: {FileId}.", fileId);
-                var plagiarism =
-                    await _plagiarismDetectionService.CheckPlagiatAsync(fileId, memoryStream, fileHash);
-                analysisResult.PlagiatData = System.Text.Json.JsonSerializer.Serialize(plagiarism);
+                var plagiarism = await _plagiarismDetectionService.CheckPlagiatAsync(
+                    fileId, plagStream, fileHash);
+                analysisResult.PlagiatData =
+                    System.Text.Json.JsonSerializer.Serialize(plagiarism);
                 _logger.LogInformation(
                     "Plagiarism check for FileId: {FileId} - IsFull: {IsFull}, OriginalId: {OriginalId}",
-                    fileId, plagiarism.IsPlagiat, plagiarism.OriginalFileId);
+                    fileId,
+                    plagiarism.IsPlagiat,
+                    plagiarism.OriginalFileId);
+            }
 
-                if (_wordCloudGenerationService != null)
+            // 4) Облако слов (опционально)
+            if (_wordCloudGenerationService != null)
+            {
+                using (var wcStream = new MemoryStream(buffer))
                 {
-                    memoryStream.Position = 0;
                     _logger.LogDebug("Generating word cloud for FileId: {FileId}.", fileId);
-                    var wordCloudResult =
-                        await _wordCloudGenerationService.GenerateAndSaveWordCloudAsync(fileId, memoryStream);
-                    if (wordCloudResult.Success)
+                    var wcResult = await _wordCloudGenerationService
+                        .GenerateAndSaveWordCloudAsync(fileId, wcStream);
+                    if (wcResult.Success)
                     {
-                        analysisResult.WordCloudImagePath = wordCloudResult.ImageLocation;
-                        _logger.LogInformation("Word cloud generated for FileId: {FileId}, Location: {Location}",
-                            fileId, wordCloudResult.ImageLocation);
+                        analysisResult.WordCloudImagePath = wcResult.ImageLocation;
+                        _logger.LogInformation(
+                            "Word cloud generated for FileId: {FileId}, Location: {Location}",
+                            fileId,
+                            wcResult.ImageLocation);
                     }
                     else
                     {
-                        _logger.LogWarning("Failed to generate word cloud for FileId: {FileId}. Error: {Error}", fileId,
-                            wordCloudResult.ErrorMessage);
+                        _logger.LogWarning(
+                            "Failed to generate word cloud for FileId: {FileId}. Error: {Error}",
+                            fileId,
+                            wcResult.ErrorMessage);
                     }
                 }
             }
 
+            // 5) Фиксируем успешное завершение
             analysisResult.Status = AnalysisStatus.Completed;
             analysisResult.CompletedAt = DateTime.UtcNow;
         }
@@ -138,8 +166,11 @@ public class FileAnalysisOrchestrator : IFileAnalysisOrchestrator
         }
 
         await _dbContext.SaveChangesAsync();
-        _logger.LogInformation("Analysis finished for FileId: {FileId} with Status: {Status}", fileId,
+        _logger.LogInformation(
+            "Analysis finished for FileId: {FileId} with Status: {Status}",
+            fileId,
             analysisResult.Status);
+
         return analysisResult;
     }
 }
