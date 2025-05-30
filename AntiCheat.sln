@@ -9,6 +9,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FileAnalysisService", "File
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ApiGateway", "ApiGateway\ApiGateway.csproj", "{250B8517-8BFD-40F9-BD91-0AC73203BB03}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FileAnalysisService.Tests", "FileAnalysisService.Tests\FileAnalysisService.Tests.csproj", "{32106F2E-82EA-4F1B-BD30-88AFBD275861}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FileStoringService.Tests", "FileStoringService.Tests\FileStoringService.Tests.csproj", "{62ACDF00-BC09-425A-9D1A-B67609E9DF4F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +31,14 @@ Global
 		{250B8517-8BFD-40F9-BD91-0AC73203BB03}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{250B8517-8BFD-40F9-BD91-0AC73203BB03}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{250B8517-8BFD-40F9-BD91-0AC73203BB03}.Release|Any CPU.Build.0 = Release|Any CPU
+		{32106F2E-82EA-4F1B-BD30-88AFBD275861}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{32106F2E-82EA-4F1B-BD30-88AFBD275861}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{32106F2E-82EA-4F1B-BD30-88AFBD275861}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{32106F2E-82EA-4F1B-BD30-88AFBD275861}.Release|Any CPU.Build.0 = Release|Any CPU
+		{62ACDF00-BC09-425A-9D1A-B67609E9DF4F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{62ACDF00-BC09-425A-9D1A-B67609E9DF4F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{62ACDF00-BC09-425A-9D1A-B67609E9DF4F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{62ACDF00-BC09-425A-9D1A-B67609E9DF4F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -11,13 +11,12 @@
 using System;
 using System.Reflection;
 
-[assembly: Microsoft.Extensions.Configuration.UserSecrets.UserSecretsIdAttribute("8e1ad43b-d62a-48c1-8786-3899fe68d283")]
-[assembly: System.Reflection.AssemblyCompanyAttribute("FileStoringService")]
+[assembly: System.Reflection.AssemblyCompanyAttribute("FileStoringService.Tests")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
 [assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+733cb186da4c457e0f93ce81e60bffe8827786cd")]
-[assembly: System.Reflection.AssemblyProductAttribute("FileStoringService")]
-[assembly: System.Reflection.AssemblyTitleAttribute("FileStoringService")]
+[assembly: System.Reflection.AssemblyProductAttribute("FileStoringService.Tests")]
+[assembly: System.Reflection.AssemblyTitleAttribute("FileStoringService.Tests")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
 
 // Создано классом WriteCodeFragment MSBuild.
